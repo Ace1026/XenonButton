@@ -13,7 +13,6 @@ extern unsigned char btn_get_state_fn(unsigned char id);
 static void prv_process_btn(unsigned char idx, xbtn_time_t mstime)
 {
 	unsigned char new_state = 0;
-	if(btn_get_state_fn == NULL) return;
 
 	new_state = btn_get_state_fn(xbtn.btn[idx].id);
 	xbtn.btn[idx].curr_state = new_state;
@@ -177,7 +176,6 @@ static void prv_process_btn(unsigned char idx, xbtn_time_t mstime)
 static void prv_process_cbtn(unsigned char idx, xbtn_time_t mstime)
 {
 	unsigned char new_state = 0;
-	if(btn_get_state_fn == NULL) return;
 
 	new_state = btn_get_state_fn(xbtn.cbtn[idx].id);
 	xbtn.cbtn[idx].curr_state = new_state;
