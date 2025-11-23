@@ -8,9 +8,7 @@ The core button management mechanism is based on [lwbtn] and has undergone signi
 
 When a button is triggered, it will not be interrupted by other buttons, and the combo button will not generate single button events repeatedly. These are two unique features that are different from many button drivers currently on the market.
 
-This button driver has three versions: C51 polling, STM32 polling, and STM32-RTOS, which have been adjusted for different versions. Linux systems can use the STM32-RTOS version.
-
-The main introduction takes the STM32-RTOS version as an example to introduce the code structure and usage instructions.
+This button driver is the STM32-RTOS version, which can be used on both STM32-RTOS systems and Linux systems.
 
 
 

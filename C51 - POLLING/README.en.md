@@ -8,9 +8,7 @@ The core button management mechanism is based on [lwbtn] and has undergone signi
 
 When a button is triggered, it will not be interrupted by other buttons, and the combo button will not generate single button events repeatedly. These are two unique features that are different from many button drivers currently on the market.
 
-This button driver has three versions: C51 polling, STM32 polling, and STM32-RTOS, which have been adjusted for different versions. Linux systems can use the STM32-RTOS version.
-
-The main introduction takes the STM32-RTOS version as an example to introduce the code structure and usage instructions.
+This button driver is the C51 polling version, which can be adjusted for C51 MCU. C51 MCU can use this version.
 
 
 
@@ -34,7 +32,7 @@ typedef enum
 {
     BTN_EVT_ONPRESS = 0x00, /*!< On press event - sent when valid press is detected */
     BTN_EVT_ONRELEASE,      /*!< On release event - sent when valid release event is detected (from active to inactive) */
-    BTN_EVT_ONCLICK,        /*!< On click event - sent when valid sequence of on-press and on-release events occurs */
+    BTN_EVT_ONCLICK,        /*!< On Click event - sent when valid sequence of on-press and on-release events occurs */
     BTN_EVT_KEEPALIVE,      /*!< Keep alive event - sent periodically when button is active */
 } xbtn_evt_t;
 ```
@@ -61,10 +59,9 @@ xenon_button
 
 ## Easy to use steps
 
-Step1: Define button ID, button parameters, button arrays, and combo button arrays.
+Step1: Define button ID, button parameters, button arrays, combo button arrays, button status get function, and button event handling function.
 
 ```c
-
 typedef enum
 {
     USER_BUTTON_0 = 0,
@@ -82,51 +79,59 @@ typedef enum
     USER_BUTTON_COMBO_1,
     USER_BUTTON_COMBO_2,
     USER_BUTTON_COMBO_3,
-
+	
     USER_BUTTON_MAX,
 } user_button_t;
 
+#define BTN_CFG_TIME_INTERVAL           10
 
-static xenon_btn_t btns[] = {
-    BTN_BUTTON_INIT(USER_BUTTON_1),
-    BTN_BUTTON_INIT(USER_BUTTON_2),
-    BTN_BUTTON_INIT(USER_BUTTON_3),
-    BTN_BUTTON_INIT(USER_BUTTON_4),
-    BTN_BUTTON_INIT(USER_BUTTON_5),
-};
+#define BTN_CFG_SINGLE_BTN_CNT          8
+#define BTN_CFG_COMBO_BTN_CNT           4
 
+unsigned char btn_get_state_fn(unsigned char id)
+{
 
-static xenon_btn_t btns_combo[] = {
-    BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_1),
-    BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_2),
-    BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_3),
-};
+}
+
+void btn_evt_fn(unsigned char idx, unsigned char is_combo, xenon_btn_evt_t evt)
+{
+
+}
+
+void xbtn_init(void)
+{
+    xbtn_para_init();
+	
+    xbtn.btn[0].id = USER_BUTTON_0;
+    xbtn.btn[1].id = USER_BUTTON_1;
+    xbtn.btn[2].id = USER_BUTTON_2;
+    xbtn.btn[3].id = USER_BUTTON_3;
+    xbtn.btn[4].id = USER_BUTTON_4;
+    xbtn.btn[5].id = USER_BUTTON_5;
+    xbtn.btn[6].id = USER_BUTTON_6;
+    xbtn.btn[7].id = USER_BUTTON_7;
+
+    xbtn.cbtn[0].id = USER_BUTTON_COMBO_0;
+    xbtn.cbtn[1].id = USER_BUTTON_COMBO_1;
+    xbtn.cbtn[2].id = USER_BUTTON_COMBO_2;
+    xbtn.cbtn[3].id = USER_BUTTON_COMBO_3;
+}
 ```
 
-Step2: Define button state acquisition functions and button event handling functions, initialize button drivers.
+Step2: Initialize button drivers.
 
 ```c
-static uint8_t prv_btn_get_state(xenon_btn_t *btn)
-{
-
-}
-
-static void prv_btn_event(xenon_btn_t *btn, xenon_btn_evt_t evt)
-{
-
-}
-
-xbtn_init(btns, BTN_ARRAY_SIZE(btns), btns_combo, BTN_ARRAY_SIZE(btns_combo), prv_btn_get_state, prv_btn_event);
+xbtn_init();
 ```
 
 
-Step3: Start button scanning, which can be implemented using a timer, task activation, or polling processing. Please note that the current system clock 'get_tick()' needs to be passed to the driver interface 'xbtn_decess'.
+Step3: Start button scanning, which can be implemented using a timer, task activation, or polling processing. 
 
 ```c
 while (1)
 {
     /* Process forever */
-    xbtn_process(get_tick());
+    xbtn_process();
 
     /* Artificial delay */
     HAL_Delay(10);
@@ -141,6 +146,7 @@ The buttons trigger different events at different times, and currently each butt
 
 | Definition                     | Description                                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------ |
+| BTN_CFG_TIME_INTERVAL          | Config to set time interval for task                                           |
 | BTN_CFG_TIME_DEBOUNCE_PRESS    | Config to set press debounce time                                              |
 | BTN_CFG_TIME_DEBOUNCE_RELEASE  | Config to set release debounce time                                            |
 | BTN_CFG_TIME_CLICK_PRESS_MIN   | Config to set minimum pressed time for valid click event                       |
@@ -153,6 +159,8 @@ The buttons trigger different events at different times, and currently each butt
 | BTN_CFG_CLICK_MAX_CONSECUTIVE  | Config to set max number of consecutive clicks                                 |
 | BTN_CFG_USE_CLICK              | Config to set whether to use the click function                                |
 | BTN_CFG_USE_KEEPALIVE          | Config to set whether to use the long press function                           |
+| BTN_CFG_SINGLE_BTN_CNT         | Config to set the number of single buttons                                     |
+| BTN_CFG_COMBO_BTN_CNT          | Config to set the number of combo buttons                                      |
 
 
 
@@ -168,8 +176,6 @@ Each button has a management structure for recording the current status, button 
 | curr_state          | Used to record the current state of buttons                                |
 | last_state          | Used to record the last state of buttons                                   |
 | flags               | Private button flags management                                            |
-| event_mask          | Private button event mask management                                       |
-| is_combo            | Used to record whether the button is a combo button                        |
 | time_change         | Time in ms when button state got changed last time after valid debounce    |
 | time_state_change   | Time in ms when button state got changed last time                         |
 | click_cnt           | Number of consecutive clicks detected                                      |
@@ -182,25 +188,22 @@ Each button has a management structure for recording the current status, button 
 ```c
 typedef struct xenon_button
 {
-    uint8_t id;                     /*!< User defined button ID information */
+    unsigned char id;               /*!< User defined button ID information */
 
-    uint16_t curr_state  : 1;       /*!< Used to record the current state of buttons */
-    uint16_t last_state  : 1;       /*!< Used to record the last state of buttons */
-    uint16_t flags       : 6;       /*!< Private button flags management */
-    uint16_t event_mask  : 5;       /*!< Private button event mask management */
-    uint16_t is_combo    : 1;       /*!< Indicate button or combo-button */
-    uint16_t reserve     : 2;       /*!< Reserve */
+    unsigned char curr_state  : 1;  /*!< Used to record the current state of buttons */
+    unsigned char last_state  : 1;  /*!< Used to record the last state of buttons */
+    unsigned char flags       : 6;  /*!< Private button flags management */
 
     xbtn_time_t time_change;        /*!< Time in ms when button state got changed last time after valid debounce */
     xbtn_time_t time_state_change;  /*!< Time in ms when button state got changed last time */
 
 #if BTN_CFG_USE_CLICK
-    uint8_t click_cnt;              /*!< Number of consecutive clicks detected, respecting maximum timeoutbetween clicks */
+    unsigned char click_cnt;        /*!< Number of consecutive clicks detected, respecting maximum timeoutbetween clicks */
     xbtn_time_t click_last_time;    /*!< Time in ms of last successfully detected (not sent!) click event */
 #endif
 
 #if BTN_CFG_USE_KEEPALIVE
-    uint16_t keepalive_cnt;         /*!< Number of keep alive events sent after successful on-press
+    unsigned short keepalive_cnt;   /*!< Number of keep alive events sent after successful on-press
                                         detection. Value is reset after on-release */
     xbtn_time_t keepalive_last_time;/*!< Time in ms of last send keep alive event */
 #endif
@@ -214,41 +217,36 @@ typedef struct xenon_button
 
 The button driver needs to manage all static registered button and combo button information, and record the interface and button status.
 
-| Definition         | Description                       |
-| ------------------ | --------------------------------- |
-| btn                | Pointer to single-buttons array   |
-| btn_cnt            | Number of single-buttons in array |
-| btn_combo          | Pointer to combo-buttons array    |
-| btn_combo_cnt      | Number of combo-buttons in array  |
-| btn_process_cnt    | Number of button in process       |
-| btn_process_idx    | Idx of single-button in process   |
-| btn_2_process_flag | Flag of two-button in process     |
-| cbtn_process_idx   | Idx of combo-button in process    |
-| cbtn_process_flag  | Flag of combo-button in process   |
-| btn_2_process_time | Time of two-button in process     |
-| btn_invalid_time   | Time of button invalid            |
-| evt_fn             | Pointer to event function         |
-| get_state_fn       | Pointer to get state function     |
+| Definition                  | Description                      |
+| --------------------------- | -------------------------------- |
+| btn[BTN_CFG_SINGLE_BTN_CNT] | Array of single-buttons          |
+| cbtn[BTN_CFG_COMBO_BTN_CNT] | Array of combo-buttons           |
+| btn_process_cnt             | Number of button in process      |
+| btn_process_idx             | Idx of single-button in process  |
+| btn_2_process_flag          | Flag of two-button in process    |
+| cbtn_process_idx            | Idx of combo-button in process   |
+| cbtn_process_flag           | Flag of combo-button in process  |
+| btn_2_process_time          | Time of two-button in process    |
+| btn_invalid_time            | Time of button invalid           |
+| btn_run_time                | Time of button run               |
 
 
 
 ```c
 typedef struct xbtn_obj
 {
-    xenon_btn_t *btns;              /*!< Pointer to single-buttons array */
-    uint8_t btns_cnt;               /*!< Number of single-buttons in array */
-    xenon_btn_t *btns_combo;        /*!< Pointer to combo-buttons array */
-    uint8_t btns_combo_cnt;         /*!< Number of combo-buttons in array */
-    uint8_t btn_process_cnt;        /*!< Number of button in process */
-    uint8_t btn_process_idx : 7;    /*!< Idx of single-button in process */
-    uint8_t btn_2_process_flag : 1; /*!< Flag of two-button in process */
-    uint8_t cbtn_process_idx : 7;   /*!< Idx of combo-button in process */
-    uint8_t cbtn_process_flag : 1;  /*!< Flag of combo-button in process */
-    xbtn_time_t btn_2_process_time; /*!< Time of two-button in process */
-    xbtn_time_t btn_invalid_time;   /*!< Time of button invalid */
-
-    xbtn_evt_fn evt_fn;             /*!< Pointer to event function */
-    xbtn_get_state_fn get_state_fn; /*!< Pointer to get state function */
+    xenon_btn_t btn[BTN_CFG_SINGLE_BTN_CNT];    /*!< Array of single-buttons */
+#if (BTN_CFG_COMBO_BTN_CNT > 0)
+    xenon_btn_t cbtn[BTN_CFG_COMBO_BTN_CNT];    /*!< Array of combo-buttons */
+#endif
+    unsigned char btn_process_cnt;              /*!< Number of button in process */
+    unsigned char btn_process_idx : 7;          /*!< Idx of single-button in process */
+    unsigned char btn_2_process_flag : 1;       /*!< Flag of two-button in process */
+    unsigned char cbtn_process_idx : 7;         /*!< Idx of combo-button in process */
+    unsigned char cbtn_process_flag : 1;        /*!< Flag of combo-button in process */
+    xbtn_time_t btn_2_process_time;             /*!< Time of two-button in process */
+    xbtn_time_t btn_invalid_time;               /*!< Time of button invalid */
+    xbtn_time_t btn_run_time;                   /*!< Time of button run */
 } xbtn_t;
 ```
 
@@ -261,9 +259,8 @@ typedef struct xbtn_obj
 The main API is to initialize and run the interface.
 
 ```c
-int xbtn_init(xenon_btn_t *btn, uint8_t btn_cnt, xenon_btn_t *cbtn,
-        uint8_t btn_combo_cnt, xbtn_get_state_fn get_state_fn, xbtn_evt_fn evt_fn);
-void xbtn_process(xbtn_time_t mstime);
+void xbtn_para_init(void);
+void xbtn_process(void);
 ```
 
 
@@ -273,9 +270,10 @@ void xbtn_process(xbtn_time_t mstime);
 Some utility functions can be used as needed.
 
 ```c
-uint8_t xenon_btn_is_active(const xenon_btn_t *btn);
-uint8_t xenon_btn_is_in_process(const xenon_btn_t *btn);
-uint8_t xbtn_is_in_process(void);
+unsigned char xenon_btn_is_active(const xenon_btn_t *btn);
+unsigned char xenon_btn_is_in_process(const xenon_btn_t *btn);
+unsigned char xbtn_is_in_process(void);
+xbtn_time_t xbtn_get_run_time(void);
 ```
 
 

@@ -8,9 +8,7 @@ The core button management mechanism is based on [lwbtn] and has undergone signi
 
 When a button is triggered, it will not be interrupted by other buttons, and the combo button will not generate single button events repeatedly. These are two unique features that are different from many button drivers currently on the market.
 
-This button driver has three versions: C51 polling, STM32 polling, and STM32-RTOS, which have been adjusted for different versions. Linux systems can use the STM32-RTOS version.
-
-The main introduction takes the STM32-RTOS version as an example to introduce the code structure and usage instructions.
+This button driver is the STM32 polling version, which can be used for STM32 state machine polling.
 
 
 
@@ -34,7 +32,7 @@ typedef enum
 {
     BTN_EVT_ONPRESS = 0x00, /*!< On press event - sent when valid press is detected */
     BTN_EVT_ONRELEASE,      /*!< On release event - sent when valid release event is detected (from active to inactive) */
-    BTN_EVT_ONCLICK,        /*!< On click event - sent when valid sequence of on-press and on-release events occurs */
+    BTN_EVT_ONCLICK,        /*!< On Click event - sent when valid sequence of on-press and on-release events occurs */
     BTN_EVT_KEEPALIVE,      /*!< Keep alive event - sent periodically when button is active */
 } xbtn_evt_t;
 ```
@@ -82,7 +80,7 @@ typedef enum
     USER_BUTTON_COMBO_1,
     USER_BUTTON_COMBO_2,
     USER_BUTTON_COMBO_3,
-
+	
     USER_BUTTON_MAX,
 } user_button_t;
 
@@ -99,7 +97,7 @@ static xenon_btn_t btns[] = {
 static xenon_btn_t btns_combo[] = {
     BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_1),
     BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_2),
-    BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_3),
+	BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_3),
 };
 ```
 
@@ -120,13 +118,13 @@ xbtn_init(btns, BTN_ARRAY_SIZE(btns), btns_combo, BTN_ARRAY_SIZE(btns_combo), pr
 ```
 
 
-Step3: Start button scanning, which can be implemented using a timer, task activation, or polling processing. Please note that the current system clock 'get_tick()' needs to be passed to the driver interface 'xbtn_decess'.
+Step3: Start button scanning, which can be implemented using a timer, task activation, or polling processing. 
 
 ```c
 while (1)
 {
     /* Process forever */
-    xbtn_process(get_tick());
+    xbtn_process();
 
     /* Artificial delay */
     HAL_Delay(10);
@@ -141,6 +139,7 @@ The buttons trigger different events at different times, and currently each butt
 
 | Definition                     | Description                                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------ |
+| BTN_CFG_TIME_INTERVAL          | Config to set time interval for task                                           |
 | BTN_CFG_TIME_DEBOUNCE_PRESS    | Config to set press debounce time                                              |
 | BTN_CFG_TIME_DEBOUNCE_RELEASE  | Config to set release debounce time                                            |
 | BTN_CFG_TIME_CLICK_PRESS_MIN   | Config to set minimum pressed time for valid click event                       |
@@ -227,6 +226,7 @@ The button driver needs to manage all static registered button and combo button 
 | cbtn_process_flag  | Flag of combo-button in process   |
 | btn_2_process_time | Time of two-button in process     |
 | btn_invalid_time   | Time of button invalid            |
+| btn_run_time       | Time of button run                |
 | evt_fn             | Pointer to event function         |
 | get_state_fn       | Pointer to get state function     |
 
@@ -246,6 +246,7 @@ typedef struct xbtn_obj
     uint8_t cbtn_process_flag : 1;  /*!< Flag of combo-button in process */
     xbtn_time_t btn_2_process_time; /*!< Time of two-button in process */
     xbtn_time_t btn_invalid_time;   /*!< Time of button invalid */
+    xbtn_time_t btn_run_time;       /*!< Time of button run */
 
     xbtn_evt_fn evt_fn;             /*!< Pointer to event function */
     xbtn_get_state_fn get_state_fn; /*!< Pointer to get state function */
@@ -263,7 +264,7 @@ The main API is to initialize and run the interface.
 ```c
 int xbtn_init(xenon_btn_t *btn, uint8_t btn_cnt, xenon_btn_t *cbtn,
         uint8_t btn_combo_cnt, xbtn_get_state_fn get_state_fn, xbtn_evt_fn evt_fn);
-void xbtn_process(xbtn_time_t mstime);
+void xbtn_process(void);
 ```
 
 
@@ -276,6 +277,7 @@ Some utility functions can be used as needed.
 uint8_t xenon_btn_is_active(const xenon_btn_t *btn);
 uint8_t xenon_btn_is_in_process(const xenon_btn_t *btn);
 uint8_t xbtn_is_in_process(void);
+xbtn_time_t xbtn_get_run_time(void);
 ```
 
 

@@ -7,7 +7,7 @@ XenonButton 是一个基于C语言的轻量级按键库，主要用于嵌入式�
 其中核心的按键管理机制借鉴的是[lwbtn]，并在其基础上做了大量改动，事件上报行为和原本处理有些不同。
 按键触发时不会被其他按键打断，组合按键不重复产生单按键事件，这是两个很独特的特性，是与目前市面上很多按键驱动不一样的地方。
 
-这个按键驱动是STM32-RTOS版本，STM32-RTOS系统可以使用这个版本，Linux系统也可以使用这个版本。
+这个按键驱动是STM32轮询版本，STM32状态机轮询可以使用这个版本。
 
 
 
@@ -58,7 +58,7 @@ xenon_button
 
 ## 使用简易步骤
 
-Step1：定义KEY_ID、按键参数和按键数组和组合按键数组。
+Step1：定义按键ID、按键参数和按键数组和组合按键数组。
 
 ```c
 
@@ -79,7 +79,7 @@ typedef enum
     USER_BUTTON_COMBO_1,
     USER_BUTTON_COMBO_2,
     USER_BUTTON_COMBO_3,
-	
+
     USER_BUTTON_MAX,
 } user_button_t;
 
@@ -96,7 +96,7 @@ static xenon_btn_t btns[] = {
 static xenon_btn_t btns_combo[] = {
     BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_1),
     BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_2),
-	BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_3),
+    BTN_BUTTON_COMBO_INIT(USER_BUTTON_COMBO_3),
 };
 ```
 
@@ -117,13 +117,13 @@ xbtn_init(btns, BTN_ARRAY_SIZE(btns), btns_combo, BTN_ARRAY_SIZE(btns_combo), pr
 ```
 
 
-Step3：启动按键扫描，具体实现可以用定时器做，也可以启任务或者轮询处理。需要注意需要将当前系统时钟`get_tick()`传给驱动接口`xbtn_process`。
+Step3：启动按键扫描，具体实现可以用定时器做，也可以启任务或者轮询处理。
 
 ```c
 while (1)
 {
     /* Process forever */
-    xbtn_process(get_tick());
+    xbtn_process();
 
     /* Artificial delay */
     HAL_Delay(10);
@@ -138,6 +138,7 @@ while (1)
 
 | 名称                           | 说明                                                                           |
 | ------------------------------ | ----------------------------------------------------------------------------- |
+| BTN_CFG_TIME_INTERVAL          | 时间间隔，按键任务的时间间隔                                                     |
 | BTN_CFG_TIME_DEBOUNCE_PRESS    | 防抖处理，按下防抖超时，配置为0，代表不启动                                       |
 | BTN_CFG_TIME_DEBOUNCE_RELEASE  | 防抖处理，松开防抖超时，配置为0，代表不启动                                       |
 | BTN_CFG_TIME_CLICK_PRESS_MIN   | 按键超时处理，按键最短时间，配置为0，代表不检查最小值                              |
@@ -179,7 +180,7 @@ while (1)
 ```c
 typedef struct xenon_button
 {
-    uint8_t id;                     /*!< User defined custom argument for callback function purpose */
+    uint8_t id;                     /*!< User defined button ID information */
 
     uint16_t curr_state  : 1;       /*!< Used to record the current state of buttons */
     uint16_t last_state  : 1;       /*!< Used to record the last state of buttons */
@@ -224,6 +225,7 @@ typedef struct xenon_button
 | cbtn_process_flag  | 记录组合按键处理的标志位       |
 | btn_2_process_time | 记录两个按键按下状态的时间     |
 | btn_invalid_time   | 记录无效按键状态的时间         |
+| btn_run_time       | 记录按键管理运行的时间计数     |
 | evt_fn             | 事件上报的回调接口             |
 | get_state_fn       | 按键状态获取的回调接口         |
 
@@ -232,10 +234,10 @@ typedef struct xenon_button
 ```c
 typedef struct xbtn_obj
 {
-    xenon_btn_t *btns;              /*!< Pointer to buttons array */
-    uint8_t btns_cnt;               /*!< Number of buttons in array */
-    xenon_btn_t *btns_combo;        /*!< Pointer to comb-buttons array */
-    uint8_t btns_combo_cnt;         /*!< Number of comb-buttons in array */
+    xenon_btn_t *btns;              /*!< Pointer to single-buttons array */
+    uint8_t btns_cnt;               /*!< Number of single-buttons in array */
+    xenon_btn_t *btns_combo;        /*!< Pointer to combo-buttons array */
+    uint8_t btns_combo_cnt;         /*!< Number of combo-buttons in array */
     uint8_t btn_process_cnt;        /*!< Number of button in process */
     uint8_t btn_process_idx : 7;    /*!< Idx of single-button in process */
     uint8_t btn_2_process_flag : 1; /*!< Flag of two-button in process */
@@ -243,6 +245,7 @@ typedef struct xbtn_obj
     uint8_t cbtn_process_flag : 1;  /*!< Flag of combo-button in process */
     xbtn_time_t btn_2_process_time; /*!< Time of two-button in process */
     xbtn_time_t btn_invalid_time;   /*!< Time of button invalid */
+    xbtn_time_t btn_run_time;       /*!< Time of button run */
 
     xbtn_evt_fn evt_fn;             /*!< Pointer to event function */
     xbtn_get_state_fn get_state_fn; /*!< Pointer to get state function */
@@ -260,7 +263,7 @@ typedef struct xbtn_obj
 ```c
 int xbtn_init(xenon_btn_t *btn, uint8_t btn_cnt, xenon_btn_t *cbtn,
         uint8_t btn_combo_cnt, xbtn_get_state_fn get_state_fn, xbtn_evt_fn evt_fn);
-void xbtn_process(xbtn_time_t mstime);
+void xbtn_process(void);
 ```
 
 
@@ -273,6 +276,7 @@ void xbtn_process(xbtn_time_t mstime);
 uint8_t xenon_btn_is_active(const xenon_btn_t *btn);
 uint8_t xenon_btn_is_in_process(const xenon_btn_t *btn);
 uint8_t xbtn_is_in_process(void);
+xbtn_time_t xbtn_get_run_time(void);
 ```
 
 
@@ -286,7 +290,7 @@ uint8_t xbtn_is_in_process(void);
 - `BTN_EVT_ONPRESS`(简称：`ONPRESS`)，每当输入从非活动状态变为活动状态并且最短去抖动时间过去时，都会将事件发送到应用程序
 - `BTN_EVT_ONRELEASE`(简称：`ONRELEASE`)，每当输入发送 `ONPRESS`事件时，以及当输入从活动状态变为非活动状态时，都会将事件发送到应用程序
 - `BTN_EVT_KEEPALIVE`(简称：`KEEPALIVE`)，事件在 `ONPRESS` 和`ONRELEASE`事件之间定期发送
-- `BTN_EVT_ONCLICK`(简称：`ONCLICK`)，事件在`ONRELEASE`后发送，并且仅当活动按钮状态在有效单击事件的允许窗口内时发送。
+- `BTN_EVT_ONCLICK`(简称：`ONCLICK`)，事件在`ONRELEASE`后发送，并且仅当活动按钮状态在有效单击事件的允许窗口内时发送
 
 
 
@@ -310,7 +314,7 @@ uint8_t xbtn_is_in_process(void);
 
 - 应正确检测到`ONPRESS` 事件，表示按钮已按下
 - 应检测到`ONRELEASE`事件，表示按钮已松开
-- `ONPRESS`和`ONRELEASE`事件之间的时间必须在时间窗口内，也就是在`BTN_CFG_TIME_CLICK_PRESS_MIN`和`BTN_CFG_TIME_CLICK_PRESS_MAX`之间时。
+- `ONPRESS`和`ONRELEASE`事件之间的时间必须在时间窗口内，也就是在`BTN_CFG_TIME_CLICK_PRESS_MIN`和`BTN_CFG_TIME_CLICK_PRESS_MAX`之间时
 
 当满足条件时，在`ONRELEASE`事件之后的`BTN_CFG_TIME_CLICK_MULTI_MAX`时间，发送`ONCLICK`事件。
 
@@ -322,7 +326,7 @@ uint8_t xbtn_is_in_process(void);
 
 注意：想象一下，有一个按钮可以在单击时切换一盏灯，并在双击时关闭房间中的所有灯。 通过超时功能和单次点击通知，用户将只收到**一次点击**，并且会根据连续按压次数值，来执行适当的操作。
 
-下面是**Multi-Click**的说明，忽略了消抖时间。`click_cnt`表示检测到的**Multi-Click** 事件数，将在最终的`ONCLICK`事件中上报。
+**Multi-Click**相关说明：`click_cnt`表示检测到的**Multi-Click** 事件数，将在最终的`ONCLICK`事件中上报。
 
 需要注意前一个按键的`ONRELEASE`事件和下次的`ONPRESS`事件间隔时间应小于`BTN_CFG_TIME_CLICK_MULTI_MAX`，`ONCLICK`事件会在最后一次按键的`ONRELEASE`事件之后`BTN_CFG_TIME_CLICK_MULTI_MAX`时间上报。
 
