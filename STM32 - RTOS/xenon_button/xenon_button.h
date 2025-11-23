@@ -37,7 +37,7 @@ typedef enum
 								active to inactive) */
 
 #if BTN_CFG_USE_CLICK
-	BTN_EVT_ONCLICK,		/*!< On Click event - sent when valid sequence of on-press and on-release
+	BTN_EVT_ONCLICK,		/*!< On click event - sent when valid sequence of on-press and on-release
 								events occurs */
 #endif
 
@@ -72,7 +72,7 @@ typedef enum
 
 typedef struct xenon_button
 {
-	uint8_t id;						/*!< User defined custom argument for callback function purpose */
+	uint8_t id;						/*!< User defined button ID information */
 	
 	uint16_t curr_state  : 1;		/*!< Used to record the current state of buttons */
 	uint16_t last_state  : 1;		/*!< Used to record the last state of buttons */
@@ -102,8 +102,8 @@ typedef uint8_t (*xbtn_get_state_fn)(xenon_btn_t *btn);
 
 typedef struct xbtn_obj
 {
-	xenon_btn_t *btn;				/*!< Pointer to buttons array */
-	uint8_t btn_cnt;				/*!< Number of buttons in array */
+	xenon_btn_t *btn;				/*!< Pointer to single-buttons array */
+	uint8_t btn_cnt;				/*!< Number of single-buttons in array */
 	xenon_btn_t *cbtn;				/*!< Pointer to combo-buttons array */
 	uint8_t btn_combo_cnt;			/*!< Number of combo-buttons in array */
 	uint8_t btn_process_cnt;		/*!< Number of button in process */

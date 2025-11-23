@@ -60,7 +60,7 @@ typedef enum
 
 typedef struct xenon_button
 {
-	unsigned char id;				/*!< User defined custom argument for callback function purpose */
+	unsigned char id;				/*!< User defined button ID information */
 	
 	unsigned char curr_state  : 1;	/*!< Used to record the current state of buttons */
 	unsigned char last_state  : 1;	/*!< Used to record the last state of buttons */
@@ -84,18 +84,18 @@ typedef struct xenon_button
 
 typedef struct xbtn_obj
 {
-	xenon_btn_t btn[BTN_CFG_SINGLE_BTN_CNT];	/*!< Array of buttons */
+	xenon_btn_t btn[BTN_CFG_SINGLE_BTN_CNT];	/*!< Array of single-buttons */
 #if (BTN_CFG_COMBO_BTN_CNT > 0)
 	xenon_btn_t cbtn[BTN_CFG_COMBO_BTN_CNT];	/*!< Array of combo-buttons */
 #endif
-	unsigned char btn_process_cnt;			/*!< Number of button in process */
-	unsigned char btn_process_idx : 7;		/*!< Idx of single-button in process */
-	unsigned char btn_2_process_flag : 1;	/*!< Flag of two-button in process */
-	unsigned char cbtn_process_idx : 7;		/*!< Idx of combo-button in process */
-	unsigned char cbtn_process_flag : 1;	/*!< Flag of combo-button in process */
-	xbtn_time_t btn_2_process_time;			/*!< Time of two-button in process */
-	xbtn_time_t btn_invalid_time;			/*!< Time of button invalid */
-	xbtn_time_t btn_run_time;				/*!< Time of button run */
+	unsigned char btn_process_cnt;				/*!< Number of button in process */
+	unsigned char btn_process_idx : 7;			/*!< Idx of single-button in process */
+	unsigned char btn_2_process_flag : 1;		/*!< Flag of two-button in process */
+	unsigned char cbtn_process_idx : 7;			/*!< Idx of combo-button in process */
+	unsigned char cbtn_process_flag : 1;		/*!< Flag of combo-button in process */
+	xbtn_time_t btn_2_process_time;				/*!< Time of two-button in process */
+	xbtn_time_t btn_invalid_time;				/*!< Time of button invalid */
+	xbtn_time_t btn_run_time;					/*!< Time of button run */
 } xbtn_t;
 
 #define BTN_BUTTON_INIT(_id) {.id = _id}
